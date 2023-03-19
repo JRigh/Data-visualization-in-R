@@ -90,3 +90,42 @@ final.plot <- grid.arrange(p1, p2, nrow = 2)
 #----
 # end
 #----
+
+#---------------------------------------------
+# Plot time data with labels above a threshold
+#---------------------------------------------
+
+# 1. create variables
+
+set.seed(2023)
+x <- seq(from = as.Date("2011-12-30"), to = as.Date("2011-12-30") + 99, by="days")
+y <- abs(rt(n = 100, df = 1, ncp = 4))
+group <- rep(c('a', 'b', 'c', 'd', 'e'), 20)
+ID <- 1:100
+
+# 2. Create dataset in the form of a data frame
+
+dataset <- data.frame(x, y, group, ID)
+
+# 3. Create plot
+
+ggplot(dataset, aes(x = x, y = y, color = group))+
+  geom_point() + 
+  scale_colour_discrete(l = 50) +                                                           # change the color tone
+  geom_hline(yintercept = mean(y), linetype="dashed", color = 'black') +                    # add horizontal line
+  geom_text(aes(label = ID), dataset %>% filter(y>mean(y)), 
+            show_guide  = FALSE, vjust = -0.6, nudge_y = 1.2) +                             # add ID if point > criterion                                                       # fixed legend label
+  scale_x_date(date_labels = "%Y %b %d", date_breaks = "7 day") +                           # fix x-axis labels
+  labs(title = 'Time data with labels above average',
+       subtitle = 'variable y by month colored by group label, on artificial dataset',
+       y="value", x="day") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        axis.text.x=element_text(angle=40, hjust=1),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
