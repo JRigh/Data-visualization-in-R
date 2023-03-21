@@ -6,7 +6,7 @@ library(GGally)
 
 data(iris)
 
-## Visualization
+# summary of distributions
 ggpairs(iris, ggplot2::aes(colour = Species, alpha = 0.4))
 
 #----
