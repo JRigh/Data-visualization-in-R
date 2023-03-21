@@ -5,11 +5,11 @@ Examples include scatterplots, histograms, kernel density estimators (KDE), time
 It also includes code for multiple plots on the same window. Here is an excerpt of some of the visualizations taken as examples.
 
 
-![viz1](/assets/viz1.jpg)
+![viz1](/assets/viz1.JPG)
 
-![viz2](/assets/viz2.jpg)
+![viz2](/assets/viz2.JPG)
 
-![viz3](/assets/viz3.jpg)
+![viz3](/assets/viz3.JPG)
 
-![viz4](/assets/viz4.jpg)
+![viz4](/assets/viz4.JPG)
 
