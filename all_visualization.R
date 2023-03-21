@@ -1,0 +1,523 @@
+#-------------------------------
+# Time series visualization in R
+#-------------------------------
+
+library(tidyverse)
+library(quantmod)
+library(reshape2)
+library(GGally)
+library(cowplot)
+library(gridExtra)
+library(ggridges)
+
+data(iris)
+
+#-------------------------
+# Summary of distributions
+#-------------------------
+
+# 1 . Summary of distributions
+ggpairs(iris, ggplot2::aes(colour = Species, alpha = 0.4))
+
+#--------------------------------
+# Scatterplot with densities in R
+#--------------------------------
+
+# 1. Create initial scatterplot
+p <- ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species))+
+  geom_point() + 
+  labs(title = 'Scatterplot with marginal densities',
+       subtitle = 'Sepal.Length x Sepal.Width from Iris dataset',
+       y="Sepal.Width", x="Sepal.Length") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 2. Create marginal densities
+xdens <- axis_canvas(p, axis = "x") +
+  geom_density(data = iris, aes(x = Sepal.Length, fill = Species),
+               alpha = 0.4, size = 0.2)
+ydens <- axis_canvas(p, axis = "y", coord_flip = TRUE)+
+  geom_density(data = iris, aes(x = Sepal.Width, fill = Species),
+               alpha = 0.4, size = 0.2) + coord_flip()
+
+p1 <- insert_xaxis_grob(p, xdens, grid::unit(.2, "null"), position = "top")
+p2 <- insert_yaxis_grob(p1, ydens, grid::unit(.2, "null"), position = "right")
+
+# 3. Create complete plot
+ggdraw(p2)
+
+#---------------
+# time data
+#---------------
+# 1. retrieve stock prices from Yahoo finance 
+
+# Tesla, Inc.
+TSLA <- getSymbols("TSLA", src = "yahoo", from = "2020-01-01", to = "2020-12-31", auto.assign = FALSE)
+# Apple Inc.
+AAPL <- getSymbols("AAPL", src = "yahoo", from = "2020-01-01", to = "2020-12-31", auto.assign = FALSE)
+
+# 2. Create dataset
+
+dates <- index(TSLA)
+dataset <- data.frame('dates' = dates, TSLA[, 6], AAPL[, 6])
+
+dataset_long <- melt(dataset, id.vars = "dates")
+head(dataset_long)  
+
+# 3. Time series plot of one stock
+
+ggplot(dataset, aes(x = dates, y = TSLA.Adjusted)) +
+  geom_line(color = 'darkblue') + 
+  geom_point(size = 0.6) +
+  labs(title = 'Time series plot',
+       subtitle = 'Tesla stock',
+       y="Adjusted closing price", x="time") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 4. Time series plot of the different stocks
+
+ggplot(dataset_long, aes(x = dates, y = value, col = variable)) +
+  geom_line() + 
+  geom_point(size = 0.6) +
+  labs(title = 'Multiple time series plot',
+       subtitle = 'Tesla and Apple stocks',
+       y="Adjusted closing price", x="time") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 5. Diverging ar chart of comparing to average
+
+# compute the mean of the variable 'var3' for each 'subcategory' group
+dataset_2 <- dataset %>% 
+  mutate(Mean_TSLA = mean(TSLA.Adjusted)) %>%
+  mutate(Diff_TSLA = TSLA.Adjusted - Mean_TSLA) %>%
+  mutate(Mean_AAPL = mean(AAPL.Adjusted)) %>%
+  mutate(Diff_AAPL = AAPL.Adjusted - Mean_AAPL)
+
+p1 <- ggplot(dataset_2, aes(x = dates, y = Diff_TSLA)) +
+  geom_bar(stat='identity', width=.5, aes(fill=Diff_TSLA),
+           show.legend = TRUE) +
+  scale_fill_continuous(name="Difference") +
+  labs(title = 'Diverging time series bar plot',
+       subtitle = 'Tesla',
+       y="difference", x="time") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+p2 <- ggplot(dataset_2, aes(x = dates, y = Diff_AAPL)) +
+  geom_bar(stat='identity', width=.5, aes(fill=Diff_AAPL),
+           show.legend = TRUE) +
+  scale_fill_continuous(name="Difference") +
+  labs(title = 'Diverging time series bar plot',
+       subtitle = 'Apple',
+       y="difference", x="time") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+final.plot <- grid.arrange(p1, p2, nrow = 2)
+
+#----
+# end
+#----
+
+
+#----------------------
+# Circular stacked plot
+#----------------------
+
+set.seed(2023) # for reproducibility
+var1 <- c(rpois(300,2), rpois(300,4), rpois(300,10))
+var2 <- c(rpois(300,4), rpois(300,2), rpois(300,1))
+var3 <- c(rpois(300,2), rpois(300,5), rpois(300,10))
+dates <- seq(as.Date("2019-01-01"), as.Date("2021-06-18"), by="days")
+length(dates)
+
+dataset <- data.frame(var1, var2, var3, dates)
+
+# group by months
+dataset2 <- dataset %>% 
+  mutate(month = format(dates, "%m"), year = format(dates, "%Y")) %>%
+  group_by(month, year) %>%
+  summarise(total1 = sum(var1), total2 = sum(var2), total3 = sum(var3))
+
+tail(dataset2)
+
+dataset22019 <- dataset2 %>% subset(year == 2019)
+dataset22020 <- dataset2 %>% subset(year == 2020)
+
+# transform data from wide to long using melt() from reshape2
+data_long_2019 <- melt(dataset22019, id.vars=c("month", "year"))
+data_long_2019$month <- data_long_2019[,1]
+
+data_long_2020 <- melt(dataset22020, id.vars=c("month", "year"))
+data_long_2020$month <- data_long_2020[,1]
+
+# stacked bar plot
+p1 <- ggplot(data_long_2019, aes(fill=variable, y=value, x=month)) + 
+  geom_bar(position="stack", stat="identity") +
+  labs(caption = "Artificial dataset 2019") +
+  scale_fill_brewer() +
+  coord_polar() +
+  labs(title = 'Circular stacked bar plot 1',
+       subtitle = 'Variable x Month on artificial dataset',
+       y="Variable", x="Month",
+       caption = "Artificial dataset 2019") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+p2 <- ggplot(data_long_2020, aes(fill=variable, y=value, x=month)) + 
+  geom_bar(position="stack", stat="identity") +
+  scale_fill_brewer() +
+  coord_polar() +
+  labs(title = 'Circular stacked bar plot 2',
+       subtitle = 'Variable x Month on artificial dataset',
+       y="Variable", x="Month",
+       caption = "Artificial dataset 2020") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+grid.arrange(p1, p2, nrow = 1)
+
+#---------------------------------------------
+# Plot time data with labels above a threshold
+#---------------------------------------------
+
+# 1. create variables
+
+set.seed(2023)
+x <- seq(from = as.Date("2011-12-30"), to = as.Date("2011-12-30") + 99, by="days")
+y <- abs(rt(n = 100, df = 1, ncp = 4))
+group <- rep(c('a', 'b', 'c', 'd', 'e'), 20)
+ID <- 1:100
+
+# 2. Create dataset in the form of a data frame
+
+dataset <- data.frame(x, y, group, ID)
+
+# 3. Create plot
+
+ggplot(dataset, aes(x = x, y = y, color = group))+
+  geom_point() + 
+  scale_colour_discrete(l = 50) +                                                           # change the color tone
+  geom_hline(yintercept = mean(y), linetype="dashed", color = 'black') +                    # add horizontal line
+  geom_text(aes(label = ID), dataset %>% filter(y>mean(y)), 
+            show_guide  = FALSE, vjust = -0.6, nudge_y = 1.2) +                             # add ID if point > criterion                                                       # fixed legend label
+  scale_x_date(date_labels = "%Y %b %d", date_breaks = "7 day") +                           # fix x-axis labels
+  labs(title = 'Time data with labels above average',
+       subtitle = 'variable y by month colored by group label, on artificial dataset',
+       y="value", x="day") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        axis.text.x=element_text(angle=40, hjust=1),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
+#----------------------
+# Overlaying histograms
+#----------------------
+
+# 1. Create first plot
+p1 <- ggplot(iris, aes(x = Sepal.Length, fill = Species)) +                              # Draw overlaying histogram
+  geom_histogram(position = "identity", alpha = 0.3, bins = 20) +
+  labs(title = 'Overlaying histogram 2',
+       subtitle = 'iris dataset',
+       y="count", x="Sepal Length") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 2. Create second plot
+p2 <- ggplot(iris, aes(x = Sepal.Width, fill = Species)) +                       # Draw overlaying histogram
+  geom_histogram(position = "identity", alpha = 0.3, bins = 20) +
+  labs(title = 'Overlaying histogram 1',
+       subtitle = 'iris dataset',
+       y="count", x="Sepal Width") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 3. Create final plot
+final.plot <- grid.arrange(p1, p2, nrow = 1)
+
+#----
+# end
+#----
+
+
+#-----------------
+# 3D barplots in R
+#-----------------
+
+library(lattice)
+library(latticeExtra)
+library(RColorBrewer)
+
+# create matrix to be plotted
+Matrix <- matrix(seq(1,1000, by=round(1000/20)),
+                 nrow=5,byrow=TRUE)
+rownames(Matrix)<-LETTERS[1:5]
+colnames(Matrix)<-letters[1:4]
+
+# color
+redcol = colorRampPalette(brewer.pal(9,'Reds'))(150)
+
+# 3D barplot 
+cloud(Matrix, panel.3d.cloud = panel.3dbars, zoom = 0.96,
+      xbase = 0.4, ybase = 0.4, zlim = c(0, max(Matrix)),
+      scales = list(arrows = FALSE, just = "right"), 
+      xlab = NULL, ylab = NULL, zlab = NULL,
+      par.settings = list(axis.line = list(col = "transparent")),
+      col.facet = level.colors(Matrix, 
+                               at = do.breaks(range(Matrix), 30),
+                               col.regions = redcol,
+                               colors = TRUE),
+      main='3D Barplot',
+      colorkey = list(col = redcol, at = do.breaks(range(Matrix), 30)),
+      screen = list(z = 20, x = -60))
+
+
+#----
+# end
+#----
+
+#-------------------------------------------------
+# Ridgeplots:
+# Different distribution density on the same graph
+# on different levels
+#-------------------------------------------------
+
+# plot
+ggplot(iris, aes(x = Sepal.Length, y = Species, fill = Species)) +
+  geom_density_ridges(alpha = 0.4) +                                          # create ridges
+  labs(title = 'Multiple densities on different levels',
+       subtitle = 'Ridge plot with ggridges on iris dataset',
+       y="Species", x="density Sepal Length") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
+#------------------
+# Stacked bar plots
+#------------------
+
+data(diamonds)
+
+diamonds2 <- diamonds %>%
+  group_by(cut) %>% 
+  count(color) %>% 
+  mutate(percentage = n/nrow(diamonds) * 100) %>% 
+  rename(nobservations = n)
+
+p1 <- ggplot(diamonds2, aes(x = cut, y = percentage, fill = color)) +
+  geom_bar(stat = 'identity') +
+  coord_flip() +
+  labs(title = 'Stacked bar plot with percentages',
+       subtitle = 'Diamonds dataset',
+       y="percentage of color", x="cut") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+p2 <- ggplot(diamonds2, aes(x = cut, y = nobservations, fill = color)) +
+  geom_bar(stat = 'identity') +
+  coord_flip() +
+  labs(title = 'Stacked bar plot with counts',
+       subtitle = 'Diamonds dataset',
+       y="count of color", x="cut") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+grid.arrange(p1, p2, nrow = 2)
+
+#----
+# end
+#----
+
+#----------------------------------------------------
+# Box plots and violin plots with mean color gradient
+#----------------------------------------------------
+
+iris2 <- iris %>% 
+  group_by(Species) %>%
+  mutate(Mean_SL = mean(Sepal.Length))
+
+# multiple box plots
+p1 <- ggplot(iris2, aes(x = Species, y = Sepal.Length)) +
+  geom_boxplot(aes(fill=Mean_SL)) +
+  geom_point(aes(x = Species, y = Sepal.Length), position = 'jitter', size = 0.4) +
+  scale_fill_gradient2('mean(Sepal Length)', low = "blue4",
+                       mid = "white", high = "firebrick4",
+                       midpoint = mean(iris2$Sepal.Length)) +
+  facet_wrap(~Species, scales="free") +
+  labs(title = 'Box plots for Sepal Length x Species, for each Species group',
+       subtitle = "Color gradient indicate the mean of the variable 'Sepal Length'",
+       caption = "irir dataset") +
+  theme(axis.text=element_text(size=5),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=6, face="italic", color="darkred"))
+
+# multiple violin plots
+p2 <-ggplot(iris2, aes(x = Species, y = Sepal.Length)) +
+  geom_violin(aes(fill=Mean_SL)) +
+  geom_point(aes(x = Species, y = Sepal.Length), position = 'jitter', size = 0.4) +
+  scale_fill_gradient2('mean(Sepal Length)', low = "blue4",
+                       mid = "white", high = "firebrick4",
+                       midpoint = mean(iris2$Sepal.Length)) +
+  facet_wrap(~Species, scales="free") +
+  labs(title = 'Violin plots for Sepal Length x Species, for each Species group',
+       subtitle = "Color gradient indicate the mean of the variable 'Sepal Length'",
+       caption = "irir dataset") +
+  theme(axis.text=element_text(size=5),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=6, face="italic", color="darkred"))
+
+final.plot <- grid.arrange(p1, p2, nrow = 2)
+
+#----
+# end
+#----
+
+#------------------------
+# Visualization dashboard
+#------------------------
+
+data(diamonds)
+
+# 1. scatterplot
+diamond.plot <- ggplot(data=diamonds, aes(x=carat, y=price, colour = clarity))+
+  geom_point(aes(size = cut))+ 
+  labs(title = 'Example of Scatterplot',
+       subtitle = 'diamonds dataset',
+       y="price", x="carat") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 2. boxplot
+diamond.bxplot <- ggplot(diamonds, aes(x = cut, y=price)) +
+  geom_boxplot(aes(fill = color))+ 
+  labs(title = 'Example of Boxplots',
+       subtitle = 'diamonds dataset',
+       y="price", x="cut") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 3. violin plot
+diamond.violinplot <- ggplot(diamonds, aes(x = cut, y=price)) +
+  geom_violin(aes(fill = color)) + 
+  labs(title = 'Example of Violin plots',
+       subtitle = 'diamonds dataset',
+       y="price", x="cut") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 4. bar plot
+diamond.barpot <- ggplot(diamonds, aes(x = clarity, fill=cut)) +
+  geom_bar() +
+  coord_flip() +
+  labs(title = 'Example of Bar plots',
+       subtitle = 'diamonds dataset',
+       y="count", x="cut") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+grid.arrange(diamond.plot, diamond.bxplot, diamond.violinplot, diamond.barpot,
+             nrow = 2)
+
+#----
+# end
+#----
+
+
+#------------------------------------------
+# Plotting multiple densities on same graph
+#------------------------------------------
+
+# 1. Create artificial data
+set.seed(2023)
+mu = seq(from = -10, to = 10, by = 1000)
+density1 = rnorm(n = 10000, mean = 0, sd = 1)
+density2 = rnorm(n = 10000, mean = -4, sd = 2)
+density3 = rnorm(n = 10000, mean = 5, sd = 1.5)
+
+# 2. Create data frame
+data_frame <- data.frame('mu' = mu, 'density1' = density1, 
+                         'density2' = density2, 'density3' = density3)
+data_frame = na.omit(data_frame)
+
+# 3. Create plot
+ggplot(data=data_frame) +
+  stat_function(fun=dnorm, args=list(mean = 0, sd = 1), 
+                aes(linetype = "Density 1"), lwd = 1.2) +
+  stat_function(fun=dnorm, args=list(mean = -4, sd = 2), 
+                aes(linetype = "Density 2"), lwd = 1.2) +
+  stat_function(fun=dnorm, args=list(mean = 5, sd = 1.5), 
+                aes(linetype = "Density 3"), lwd = 1.2) +
+  xlim(-10, 10) + ylim(0, 0.4) +
+  labs(title = 'Multiple theoretical densities on same graph',
+       subtitle = 'artificial dataset',
+       y="density", x="mu") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
+
