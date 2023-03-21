@@ -146,3 +146,7 @@ plot4 <- ggdraw(p2)
 # final plot -------------------------------------------------------------------
 final.plot <- grid.arrange(plot1, plot2, plot3, plot4, nrow = 2)
 
+#----
+# end
+#----
+
