@@ -9,6 +9,7 @@ library(GGally)
 library(cowplot)
 library(gridExtra)
 library(ggridges)
+library(fmsb)
 
 data(iris)
 
@@ -234,6 +235,68 @@ ggplot(dataset, aes(x = x, y = y, color = group))+
         plot.subtitle=element_text(size=9, face="italic", color="darkred"),
         panel.background = element_rect(fill = "white", colour = "grey50"),
         panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
+#-----------------------------------
+# Histograms with overlaying density
+#-----------------------------------
+
+data(iris)
+
+# 1. Create first plot
+p1 <- ggplot(iris, aes(x = Petal.Length)) +
+  geom_histogram( color = 'black', fill = 'darkred', binwidth = 0.3) +
+  labs(title = 'Histogram of Petal Length',
+       subtitle = 'iris dataset',
+       y="count", x="Sepal Width") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 1. Create first plot
+p2 <- ggplot(iris, aes(x = Petal.Length, color = Species, fill = Species)) +
+  geom_histogram( color = 'black', binwidth = 0.3, alpha = 0.4) +
+  labs(title = 'Histogram by Species',
+       subtitle = 'iris dataset',
+       y="count", x="Sepal Width") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 2. Create second plot
+p3 <-  ggplot(iris) +
+  geom_histogram(aes(x = Petal.Length, y = stat(density)), fill = "black", binwidth = 0.1) +
+  geom_density(aes(x = Petal.Length, fill = Species, colour = Species), alpha = 0.4) +
+  labs(title = 'Histogram with overlying densities by Species',
+       subtitle = 'iris dataset',
+       y="count", x="Sepal Width") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 3. Create third plot
+p4 <- ggplot(iris) +
+  geom_density(aes(x = Petal.Length, fill = Species), alpha = 0.4) +
+  labs(title = 'Densities by Species',
+       subtitle = 'iris dataset',
+       y="count", x="Sepal Width") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 3. Create final plot
+final.plot <- grid.arrange(p1, p2, p3, p4, nrow = 2)
 
 #----
 # end
@@ -481,6 +544,81 @@ grid.arrange(diamond.plot, diamond.bxplot, diamond.violinplot, diamond.barpot,
 # end
 #----
 
+#---------------------------
+# Parallel coordinates plots
+#---------------------------
+
+ggparcoord(iris, columns = 1:4, groupColumn = 5, order = "anyClass",
+           showPoints = TRUE, alphaLines = 0.4) + 
+  labs(title = 'Parallel coordinates plots',
+       subtitle = 'iris dataset',
+       y="value", x="Species") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
+#--------------
+# Pareto charts
+#--------------
+
+# taken from:https://rpubs.com/dav1d00/ggpareto
+
+# creating a factor variable:
+dataset <- rep(c(LETTERS[1:5]), c(30, 66, 6, 42, 21))
+
+# implementing the function:
+ggpareto <- function(x) {
+  title <- deparse(substitute(x))
+  x <- data.frame(modality = na.omit(x))
+  Df <- x %>% group_by(modality) %>% summarise(frequency=n()) %>% 
+    arrange(desc(frequency))
+  Df$modality <- ordered(Df$modality, levels = unlist(Df$modality, use.names = F))
+  Df <- Df %>% mutate(modality_int = as.integer(modality), 
+                      cumfreq = cumsum(frequency), cumperc = cumfreq/nrow(x) * 100)
+  nr <- nrow(Df)
+  N <- sum(Df$frequency)
+  Df_ticks <- data.frame(xtick0 = rep(nr +.55, 11), xtick1 = rep(nr +.59, 11), 
+                         ytick = seq(0, N, N/10))
+  y2 <- c("  0%", " 10%", " 20%", " 30%", " 40%", " 50%", " 60%", " 70%", " 80%", " 90%", "100%")
+  
+  library(ggplot2)
+  
+  g <- ggplot(Df, aes(x=modality, y=frequency)) + 
+    geom_bar(stat="identity", aes(fill = modality_int)) +
+    geom_line(aes(x=modality_int, y = cumfreq, color = modality_int)) +
+    geom_point(aes(x=modality_int, y = cumfreq, color = modality_int), pch = 19) +
+    scale_y_continuous(breaks=seq(0, N, N/10), limits=c(-.02 * N, N * 1.02)) + 
+    scale_x_discrete(breaks = Df$modality) +
+    guides(fill = FALSE, color = FALSE) + 
+    annotate("rect", xmin = nr + .55, xmax = nr + 1, 
+             ymin = -.02 * N, ymax = N * 1.02, fill = "white") +
+    annotate("text", x = nr + .8, y = seq(0, N, N/10), label = y2, size = 3.5) +
+    geom_segment(x = nr + .55, xend = nr + .55, y = -.02 * N, yend = N * 1.02, color = "grey50") +
+    geom_segment(data = Df_ticks, aes(x = xtick0, y = ytick, xend = xtick1, yend = ytick)) +
+    labs(title = 'Pareto plot (frequency and percentage by group)',
+         subtitle = 'artificial dataset',
+         y="Frequency", x="Group") +
+    theme(axis.text=element_text(size=8),
+          axis.title=element_text(size=8),
+          plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+          panel.background = element_rect(fill = "white", colour = "grey50"),
+          panel.grid.major = element_line(colour = "grey90"))
+  return(list(graph = g, Df = Df[, c(3, 1, 2, 4, 5)]))
+}
+
+# applying the function to the factor variable:
+ggpareto(dataset)
+
+
+#----
+# end
+#----
 
 #------------------------------------------
 # Plotting multiple densities on same graph
@@ -520,4 +658,52 @@ ggplot(data=data_frame) +
 # end
 #----
 
+#------------------------------------------
+# Plotting multiple densities on same graph
+# with different colors
+#------------------------------------------
 
+# priors
+alpha1 = 2; beta1 = 2
+lambda <- seq(0,10,length=1000)
+prior1 = lambda^(alpha1 - 1) * exp(- lambda * beta1) ; prior1 = prior1 / sum(prior1)
+
+# data
+n = 20; lambda1 = 1 # Poisson likelihood parameters
+
+# likelihood
+likelihood1 = dpois(lambda1, lambda)
+
+# posterior
+lp1 = likelihood1 * prior1 ; posterior1 = lp1 / sum(lp1)
+
+set.seed(2023)
+data1 = rpois(n = n, lambda = lambda1)
+meandata1 = mean(data1) # [1] 0.85
+alpha_posterior = round(alpha1 + n*mean(data1), 2) # 19
+beta_posterior = n + beta1 # 22
+
+# dataframe
+data_frame <- data.frame('lambda' = lambda, 'prior' = prior1, 'likelihood' = likelihood1, 'posterior' = posterior1)
+
+ggplot(data=data_frame) +
+  geom_line(aes(x = lambda, y = prior1, color = 'Ga(2,2) prior'), lwd = 1.2) +
+  geom_line(aes(x = lambda, y = likelihood1/sum(likelihood1), 
+                color = 'Scaled likelihood P(1)'), lwd = 1.2) +
+  geom_line(aes(x = lambda, y = posterior1, color = 'Ga(19,22) posterior'), lwd = 1.2) +
+  xlim(0, 10) + ylim(0, max(c(prior1, posterior1, likelihood1 / sum(likelihood1)))) +
+  scale_color_manual(name = "Distributions", values = c("Ga(2,2) prior" = "darkred", 
+                                                        "Scaled likelihood P(1)" = "black",
+                                                        'Ga(19,22) posterior' = 'darkblue')) +
+  labs(title = 'Multiple densities with different colors',
+       subtitle = 'artificial data',
+       y="density", x="parameter") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
