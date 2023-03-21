@@ -13,3 +13,5 @@ It also includes code for multiple plots on the same window. Here is an excerpt 
 
 ![viz4](/assets/viz4.JPG)
 
+Enjoy the content.
+
