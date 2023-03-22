@@ -647,6 +647,149 @@ ggpareto(dataset)
 # end
 #----
 
+#-------------
+# Mosaic plots
+#-------------
+
+# using diamonds dataset for illustration
+df <- diamonds %>%
+  group_by(cut, clarity) %>%
+  summarise(count = n()) %>%
+  mutate(cut.count = sum(count),
+         prop = count/sum(count)) %>%
+  ungroup()
+
+ggplot(df, aes(x = cut, y = prop, width = cut.count, fill = clarity)) +
+  geom_bar(stat = "identity", position = "fill", colour = "black") +
+  facet_grid(~cut, scales = "free_x", space = "free_x") +
+  scale_fill_brewer(palette = "RdYlBu") +
+  labs(title = 'Mosaic plot of frequency for two nomial or categorical variables',
+       subtitle = 'Diamonds dataset',
+       y="features", x="correlation") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+
+#----
+# end
+#----
+
+#----------------------
+# Plotting correlations
+#----------------------
+
+# 1. Download dataset
+dataset <- read.csv('C:/Users/julia/OneDrive/Desktop/github/11. Customer_churn_analysis/Telco-Customer-Churn.csv', na.strings = c('','?'))
+dataset$ChurnDummy <- as.factor(ifelse(dataset$Churn == 'Yes', 1, 0))
+dataset = na.omit(dataset) # removing missing values
+
+# recapitulation of training set with separation between predictors and outcomes
+rec_obj <- dataset %>%
+  recipe(Churn ~ .) %>%
+  step_rm(customerID) %>%
+  step_naomit(all_outcomes(), all_predictors()) %>%
+  step_discretize(tenure, options = list(cuts = 6)) %>%
+  step_log(TotalCharges) %>%
+  step_mutate(Churn = ifelse(Churn == "Yes", 1, 0)) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_center(all_predictors(), -all_outcomes()) %>%
+  step_scale(all_predictors(), -all_outcomes()) %>%
+  prep()
+
+summary(rec_obj)
+print(summary(rec_obj), n = 36)
+
+# design matrix of predictors and vector of outcomes as numeric
+features_train_tbl <- juice(rec_obj, all_predictors(), composition = "matrix") 
+response_train_vec <- juice(rec_obj, all_outcomes()) %>% pull()
+
+# analysis of correlations
+corrr_analysis <- features_train_tbl %>%
+  as_tibble() %>%
+  mutate(Churn = response_train_vec) %>%
+  correlate() %>%
+  focus(Churn) 
+
+# positive and negative correlated predictors
+pos <- corrr_analysis %>%
+  filter(Churn > 0)
+
+neg <- corrr_analysis %>%
+  filter(Churn < 0)
+
+# plot
+ggplot(corrr_analysis, aes(x = Churn, y = fct_reorder(term, desc(Churn)))) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = term), data = under, color = 'darkred') +
+  geom_point(data = neg, color = 'darkred') +
+  geom_segment(aes(xend = 0, yend = term), data = over, color = "darkblue") +
+  geom_point(data = pos, color = "darkblue") +
+  labs(title = 'Plotting correlations of features to a response (even nominal)',
+       subtitle = 'Telco dataset',
+       y="features", x="correlation") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# corelogram
+
+library(corrplot)
+
+par(mfrow = c(1,2))
+corrplot(cor(iris[,1:4]), method="pie",
+         main = '')
+corrplot(cor(iris[,1:4]), method="number",
+         main = '')
+
+#----
+# end
+#----
+
+#-----------------------------------------------------
+# Plotting odds ratios from binary logistic regression
+#-----------------------------------------------------
+
+# 1. Download dataset
+dataset <- read.csv('C:/Users/julia/OneDrive/Desktop/github/11. Customer_churn_analysis/Telco-Customer-Churn.csv', na.strings = c('','?'))
+dataset$ChurnDummy <- as.factor(ifelse(dataset$Churn == 'Yes', 1, 0))
+dataset = na.omit(dataset) # removing missing values
+
+model.1.lr <- glm(formula = ChurnDummy  ~ gender + SeniorCitizen + Partner + Dependents + 
+                    tenure + PhoneService +  MultipleLines +
+                    InternetService +OnlineSecurity + OnlineBackup + 
+                    DeviceProtection + TechSupport + StreamingTV +
+                    StreamingMovies + Contract + PaperlessBilling + 
+                    PaymentMethod + MonthlyCharges + TotalCharges,               
+                  data = dataset, family = "binomial")
+
+summary <- summary(model.1.lr)
+
+# export the results in LaTex document
+print(xtable(summary$coefficients, type = "latex"), file = "Customer_churn_analysis_tables.tex")
+
+# Confidence intervals
+exp(confint(model.1.lr))
+
+# plot coefficients odds ratio 
+plot_model(model.1.lr, vline.color = "red",
+           sort.est = TRUE, show.values = TRUE) +
+  labs(title = 'Plotting odds ratios - Binary Logistic regression',
+       subtitle = 'Telco dataset',
+       y="features", x="Odds ratio") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90")) 
+
+#----
+# end
+#----
 
 #------------------------------------------
 # Plotting multiple densities on same graph
@@ -735,3 +878,48 @@ ggplot(data=data_frame) +
 #----
 # end
 #----
+
+
+set.seed(2023)
+n <- 10000
+theta.hat <- se <- numeric(2)
+h <- function(x) {exp(-x)/(1+x^2)}  # function to integrate
+
+# crude MC estimation
+set.seed(1)
+x1 <- runif(n)
+set.seed(2)
+x2 <- runif(n)
+set.seed(3)
+x3 <- runif(n)
+set.seed(4)
+x4 <- runif(n)
+set.seed(5)
+x5 <- runif(n)
+
+fg_1 <- h(x1)
+fg_2 <- h(x2)
+fg_3 <- h(x3)
+fg_4 <- h(x4)
+fg_5 <- h(x5)
+
+# dataframe
+dataset <- data.frame('n' = 1:length(fg_1), 'x1' = fg_1, 'x2' = fg_2, 
+                       'x3' = fg_3, 'x4' = fg_4, 'x5' = fg_5)
+
+# plot convergence of MC estimators
+ggplot(dataset, aes( x = n)) +
+  geom_line( aes(y = cumsum(x1)/(1:length(x1))), color = 'black') +
+  geom_line(aes(y = cumsum(x2)/(1:length(x2))), color = 'black') +
+  geom_line(aes(y = cumsum(x3)/(1:length(x3))), color = 'black') +
+  geom_line(aes(y = cumsum(x4)/(1:length(x4))), color = 'black') +
+  geom_line(aes(y = cumsum(x5)/(1:length(x5))), color = 'black') +
+  ylim(0.45 , 0.6) +
+  labs(title = 'Plot of the convergence of MC estimates',
+       subtitle = 'artificial dataset',
+       y="Mean value", x="n") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
