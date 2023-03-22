@@ -10,6 +10,7 @@ library(cowplot)
 library(gridExtra)
 library(ggridges)
 library(fmsb)
+library(sjPlot)
 
 data(iris)
 
@@ -49,6 +50,32 @@ p2 <- insert_yaxis_grob(p1, ydens, grid::unit(.2, "null"), position = "right")
 
 # 3. Create complete plot
 ggdraw(p2)
+
+#--------------------------------------------
+# Scatterplot with different regression lines
+#--------------------------------------------
+
+# linear model
+mod1 <- lm(Petal.Length ~ Sepal.Length, data = iris)
+iris$predictions <- predict(mod1, type = 'response')
+
+# plot
+ggplot(data = iris, aes(x = Sepal.Length,y = Petal.Length, colour=Species)) + 
+  geom_smooth(method=lm) + 
+  geom_line(color='black', size = 1.2, aes(x=Sepal.Length, y = predictions)) +
+  geom_point() +
+  labs(title = 'Scatterplot with different regression lines',
+       subtitle = 'Sepal.Length x Petal.Width from Iris dataset, see if we should use mixed models',
+       y="Petal Length", x="Sepal Length") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
 
 #---------------
 # time data
@@ -249,7 +276,7 @@ data(iris)
 # 1. Create first plot
 p1 <- ggplot(iris, aes(x = Petal.Length)) +
   geom_histogram( color = 'black', fill = 'darkred', binwidth = 0.3) +
-  labs(title = 'Histogram of Petal Length',
+  labs(title = 'Histogram of Sepal Width',
        subtitle = 'iris dataset',
        y="count", x="Sepal Width") +
   theme(axis.text=element_text(size=8),
@@ -270,25 +297,25 @@ p2 <- ggplot(iris, aes(x = Petal.Length, color = Species, fill = Species)) +
         panel.background = element_rect(fill = "white", colour = "grey50"),
         panel.grid.major = element_line(colour = "grey90"))
 
-# 2. Create second plot
+# 2. Create thrid plot
 p3 <-  ggplot(iris) +
   geom_histogram(aes(x = Petal.Length, y = stat(density)), fill = "black", binwidth = 0.1) +
   geom_density(aes(x = Petal.Length, fill = Species, colour = Species), alpha = 0.4) +
   labs(title = 'Histogram with overlying densities by Species',
        subtitle = 'iris dataset',
-       y="count", x="Sepal Width") +
+       y="density", x="Sepal Width") +
   theme(axis.text=element_text(size=8),
         axis.title=element_text(size=8),
         plot.subtitle=element_text(size=10, face="italic", color="darkred"),
         panel.background = element_rect(fill = "white", colour = "grey50"),
         panel.grid.major = element_line(colour = "grey90"))
 
-# 3. Create third plot
+# 4. Create fourth plot
 p4 <- ggplot(iris) +
   geom_density(aes(x = Petal.Length, fill = Species), alpha = 0.4) +
   labs(title = 'Densities by Species',
        subtitle = 'iris dataset',
-       y="count", x="Sepal Width") +
+       y="density", x="Sepal Width") +
   theme(axis.text=element_text(size=8),
         axis.title=element_text(size=8),
         plot.subtitle=element_text(size=10, face="italic", color="darkred"),
@@ -619,6 +646,7 @@ ggpareto(dataset)
 #----
 # end
 #----
+
 
 #------------------------------------------
 # Plotting multiple densities on same graph
