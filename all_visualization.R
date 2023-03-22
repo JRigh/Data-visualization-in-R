@@ -791,6 +791,33 @@ plot_model(model.1.lr, vline.color = "red",
 # end
 #----
 
+
+#----------------------
+# Ploting likert scales
+#----------------------
+
+library(likert)
+data("pisaitems")
+
+# capture Likert data by group
+data <- likert(pisaitems[,2:6], grouping=pisaitems$CNT) 
+
+# plot
+plot(data) +
+  labs(title = 'Plotting likert scales',
+       subtitle = 'pisaitems dataset',
+       y="group", x="percentage") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90")) 
+
+
+#----
+# end
+#----
+
 #------------------------------------------
 # Plotting multiple densities on same graph
 #------------------------------------------
