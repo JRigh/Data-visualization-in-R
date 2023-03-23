@@ -1,5 +1,5 @@
 #-------------------------------
-# Time series visualization in R
+# Elements of visualization in R
 #-------------------------------
 
 library(tidyverse)
@@ -7,19 +7,14 @@ library(quantmod)
 library(reshape2)
 library(GGally)
 library(cowplot)
-library(gridExtra)
+library(gridExtra)           # for multiple plots
 library(ggridges)
 library(fmsb)
 library(sjPlot)
+library(ggfx)                # for shaded areas
 
 data(iris)
-
-#-------------------------
-# Summary of distributions
-#-------------------------
-
-# 1 . Summary of distributions
-ggpairs(iris, ggplot2::aes(colour = Species, alpha = 0.4))
+data(diamonds)
 
 #--------------------------------
 # Scatterplot with densities in R
@@ -70,6 +65,114 @@ ggplot(data = iris, aes(x = Sepal.Length,y = Petal.Length, colour=Species)) +
   theme(axis.text=element_text(size=8),
         axis.title=element_text(size=8),
         plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
+
+#---------------------------------------------------------
+# Scatterplot with regression lines and marginal densities
+#---------------------------------------------------------
+
+# Nonparametric regression model
+mod1 <- lm(Sepal.Width ~ Sepal.Length, data = iris)
+iris$predictions <- predict(mod1, type = 'response')
+
+# plot
+p <- ggplot(data = iris, aes(x = Sepal.Length,y = Sepal.Width, colour=Species)) + 
+  geom_smooth(method='lm', se = FALSE) + 
+  geom_line(color='black', size = 1.2, data = iris, aes(x=Sepal.Length, y = predictions)) +
+  geom_point() +
+  labs(title = 'Scatterplot with different  regression lines and marginal densities',
+       subtitle = 'Sepal Width x Sepal Length from Iris dataset',
+       y="Petal Length", x="Sepal Width") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 2. Create marginal Boxplots
+xbp <- axis_canvas(p, axis = "x") +
+  geom_density(data = iris, aes(x = Sepal.Length, fill = Species),
+               alpha = 0.4, size = 0.2)
+ybp <- axis_canvas(p, axis = "y", coord_flip = TRUE)+
+  geom_density(data = iris, aes(x = Sepal.Width, fill = Species),
+               alpha = 0.4, size = 0.2) + coord_flip()
+
+p1 <- insert_xaxis_grob(p, xbp, grid::unit(.2, "null"), position = "top")
+p2 <- insert_yaxis_grob(p1, ybp, grid::unit(.2, "null"), position = "right")
+
+# 3. Create complete plot
+ggdraw(p2)
+
+#----
+# end
+#----
+
+#-----------------------------------------------------------
+# Scatterplot with nonparametric lines and marginal boxplots
+#-----------------------------------------------------------
+
+# Nonparametric regression model
+mod1 <- ksmooth(x = iris$Sepal.Length, y = iris$Petal.Length,
+                kernel = "normal", bandwidth = 1)
+
+# plot
+p <- ggplot(data = iris, aes(x = Sepal.Length,y = Petal.Length, colour=Species)) + 
+  geom_smooth(method='loess', se = FALSE) + 
+  geom_line(color='black', size = 1.2, data = iris, aes(x=mod1$x, y = mod1$y)) +
+  geom_point() +
+  labs(title = 'Scatterplot with different Nonparametric regression lines and marginal boxplots plots',
+       subtitle = 'Sepal.Length x Petal.Length from Iris dataset',
+       y="Petal Length", x="Sepal Length") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+# 2. Create marginal Boxplots
+xbp <- axis_canvas(p, axis = "x") +
+  geom_boxplot(data = iris, aes(x = Sepal.Length, fill = Species),
+               alpha = 0.4, size = 0.2)
+ybp <- axis_canvas(p, axis = "y", coord_flip = TRUE)+
+  geom_boxplot(data = iris, aes(x = Petal.Length, fill = Species),
+               alpha = 0.4, size = 0.2) + coord_flip()
+
+p1 <- insert_xaxis_grob(p, xbp, grid::unit(.2, "null"), position = "top")
+p2 <- insert_yaxis_grob(p1, ybp, grid::unit(.2, "null"), position = "right")
+
+# 3. Create complete plot
+ggdraw(p2)
+
+#----
+# end
+#----
+
+
+
+
+# subset diamonds
+set.seed(2023)
+indexes <- sample(diamonds$color, size = 10000, replace = FALSE)
+result <- subset(diamonds, colors = indexes)
+diamonds1000 <- result[sample(nrow(result), 1000), ]
+diamonds1000 <- dplyr::slice_sample(result, n = 1000)
+
+# create scatterplot
+ggplot(data=diamonds1000, aes(x=carat, y=price, colour = clarity))+
+  geom_point(aes(size = cut)) + 
+  viridis::scale_color_viridis(discrete=TRUE,option="magma") +
+  labs(title = 'Scatterplot with point sizes and colors by group',
+       subtitle = 'subset of diamonds dataset',
+       y="price", x="carat") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
         panel.background = element_rect(fill = "white", colour = "grey50"),
         panel.grid.major = element_line(colour = "grey90"))
 
@@ -509,6 +612,25 @@ final.plot <- grid.arrange(p1, p2, nrow = 2)
 # end
 #----
 
+#-------------------------
+# Summary of distributions
+#-------------------------
+
+# 1 . Summary of distributions
+ggpairs(iris, ggplot2::aes(colour = Species, alpha = 0.4)) +
+  labs(title = 'Summary of distributions with ggpairs',
+       subtitle = 'all variables x all variables, by group, iris dataset',
+       y="", x="") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
 #------------------------
 # Visualization dashboard
 #------------------------
@@ -818,6 +940,100 @@ plot(data) +
 # end
 #----
 
+#-------------------------------------
+# Plotting Markowitz tangent portfolio 
+#-------------------------------------
+
+library(quantmod)
+library(PerformanceAnalytics)
+
+retrieve stock prices from Yahoo finance
+# Tesla, Inc.
+TSLA <- getSymbols("TSLA", src = "yahoo", from = "2020-01-01", to = "2022-06-01", 
+                   auto.assign = FALSE)
+# Apple Inc.
+AAPL <- getSymbols("AAPL", src = "yahoo", from = "2020-01-01", to = "2022-06-01",
+                   auto.assign = FALSE)
+# Meta Platforms, Inc.
+META <- getSymbols("META", src = "yahoo", from = "2020-01-01", to = "2022-06-01", 
+                   auto.assign = FALSE)
+# Amazon.com, Inc.
+AMZN <- getSymbols("AMZN", src = "yahoo", from = "2020-01-01", to = "2022-06-01",
+                   auto.assign = FALSE)
+# time series plot of the different stocks
+plot(TSLA$TSLA.Adjusted, main = 'Stock prices ...')
+lines(AAPL$AAPL.Adjusted, col = 'darkred')
+lines(META$META.Adjusted, col = 'darkblue')
+lines(AMZN$AMZN.Adjusted, col = 'darkgreen')
+
+# daily log returns
+TSLAreturns = Return.calculate(TSLA[,6],method="log")
+TSLAreturns = TSLAreturns[(-1)]
+AAPLreturns = Return.calculate(AAPL[,6],method="log")
+AAPLreturns = AAPLreturns[(-1)]
+METAreturns = Return.calculate(META[,6],method="log")
+METAreturns = METAreturns[(-1)]
+AMZNreturns = Return.calculate(AMZN[,6],method="log")
+AMZNreturns = AMZNreturns[(-1)]
+
+returns<- data.frame(cbind(TSLAreturns, AAPLreturns, METAreturns, AMZNreturns))
+
+# mean returns
+mean.returns <- as.numeric(colMeans(returns))
+# anualized risk (stadard deviation) of returns
+cov.returns.anualized <- cov(returns) * 252
+# simulations
+nsim <- 10000
+# storage objects
+Aweights <- matrix(rep(0, nsim*4), nrow = nsim, ncol = 4)
+Returns.Port <- numeric(nsim)
+Risk.Port <- numeric(nsim)
+weights <- numeric(4)
+Weights <-matrix(rep(0, nsim*4), nrow = nsim, ncol = 4)
+
+set.seed(2023)
+for(i in 1:nsim) {
+  weights <- runif(4)
+  sweights <- sum(weights)
+  Weights[i, ] <- weights/sweights
+  # Portfolio return
+  returns.Port <- sum((weights/sweights) * mean.returns)
+  Returns.Port[i] <- ((returns.Port + 1)^252) - 1
+  # Rortfolio risk
+  Risk.Port[i] <- sqrt(t((weights/sweights)) %*% (cov.returns.anualized  
+                                                  %*% (weights/sweights)))
+}
+Portfolios <- matrix(cbind(Weights,Returns.Port,Risk.Port), 
+                     byrow = FALSE, ncol = 6)
+colnames(Portfolios) <- c("TESLA", "APPLE", "META", "AMZN", "Return", "Risk")
+head(round(Portfolios,4))
+
+# tangent portfolio (maximizing mean return over risk)
+Portfolios <- data.frame(Portfolios)
+
+p1<-  ggplot(Portfolios, aes(x = Risk, y = Return, color = Risk)) +
+  geom_point() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_continuous(labels = scales::percent) +
+  scale_colour_gradient2() +
+  geom_point(aes(x = Risk,
+                 y = Return), data = Portfolios[which.max(mean(Portfolios$Return)/Portfolios$Risk), ], 
+             color = 'black', size = 3) +
+  annotate('text', x = 0.39, y = 0.7, label = "Portfolio selection (black)") +
+  labs(title = 'Tangent Portfolio - Maximizing the Sharpe ratio',
+       subtitle = 'Portfolio of 4 stocks retrieved from Yahoo finance',
+       y="Annualized Returns", x="Annualized Risk (standard deviation)") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+
+#----
+# end
+#----
+
 #------------------------------------------
 # Plotting multiple densities on same graph
 #------------------------------------------
@@ -906,6 +1122,35 @@ ggplot(data=data_frame) +
 # end
 #----
 
+#---------------------------------------------
+# Distribution with colored areas and segments
+#---------------------------------------------
+
+# 1. Create artificial data
+set.seed(2023)
+
+tibble(dataset = rnorm(100000, 0, 1)) |> 
+  ggplot(aes(dataset)) +
+  as_reference(geom_density(adjust = 2, fill = "white"), id = "density") +
+  with_blend(annotate("rect", xmin = c(-1.96,1.96), xmax = c(-Inf, Inf), ymin = -Inf, ymax = Inf,
+                      fill = "black"), bg_layer = "density", blend_type = "atop") +
+  geom_segment(aes(x = 0, y = 0, xend = 0, yend = 0.389)) +
+  labs(title = 'Distribution with colored or shaded areas and segments',
+       subtitle = 'Standard Normal artificial dataset',
+       y="Mean value", x="n") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=9, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
+#----------------------------------
+# plot convergence of MC estimators
+#----------------------------------
 
 set.seed(2023)
 n <- 10000
@@ -934,7 +1179,7 @@ fg_5 <- h(x5)
 dataset <- data.frame('n' = 1:length(fg_1), 'x1' = fg_1, 'x2' = fg_2, 
                        'x3' = fg_3, 'x4' = fg_4, 'x5' = fg_5)
 
-# plot convergence of MC estimators
+# plot 
 ggplot(dataset, aes( x = n)) +
   geom_line( aes(y = cumsum(x1)/(1:length(x1))), color = 'black') +
   geom_line(aes(y = cumsum(x2)/(1:length(x2))), color = 'black') +
@@ -950,3 +1195,9 @@ ggplot(dataset, aes( x = n)) +
         plot.subtitle=element_text(size=9, face="italic", color="darkred"),
         panel.background = element_rect(fill = "white", colour = "grey50"),
         panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
+
