@@ -49,6 +49,16 @@ library(cowplot)
 
 ![composite1](/assets/composite1.png)
 
+Scatterplot with different pointsize
+
+```r
+ggplot(data=dataset, aes(x=variable1, y=variable2, colour = group))+
+  geom_point(aes(size = variable3)) +
+  customization
+```
+
+![scatterplotdiamonds1000](/assets/scatterplotdiamonds1000.png)
+
 Plot multiples subplots (eg. mixed of numerical and categorical/nominal variables
 
 ```r
@@ -83,7 +93,29 @@ ggplot(iris, aes(x = value, y = group, fill = group)) +
 
 ![ridgeplot](/assets/ridgeplot.png)
 
-3. Statistics
+Plot joint distribution of two categorical or nominal variages (eg. nominal x categorical)
+
+```r
+ggplot(dataset, aes(x = variable1, y = prop, width = cut.count, fill = variable2)) +
+  geom_bar() +
+  facet_grid(~ variable1, scales = "free_x", space = "free_x") +
+  customization
+```
+
+![mosaicplot](/assets/mosaicplot.png)
+
+3. Statistics 
+
+Plot a distribution with colored or shaded area
+
+```r
+ggplot(aes(dataset)) +
+  as_reference(geom_density(), id = "density") +
+  with_blend(annotate("), bg_layer = "density", blend_type = "atop") +
+  customization
+```
+
+![distribution3](/assets/distribution3.png)
 
 Plot multiple theoretical distributions on the same plot (eg. three Normal densities)
 
