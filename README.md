@@ -43,66 +43,70 @@ ggplot(dataset, aes(x = dates, y = value)) +
 
 Scatterplot with marginal densities and regression lines by group (eg. numerical x numerical, by group)
 
+```r
+library(cowplot)
+```
+
 ![composite1](/assets/composite1.png)
 
 Plot multiples subplots (eg. mixed of numerical and categorical/nominal variables
+
+```r
+p1 = ggplot(data=dataset) +
+  customization
+  
+p2 = ggplot(data=dataset) +
+  customization
+
+grid.arrange(p1, p2)
+```
 
 ![dashboard1](/assets/dashboard1.png)
 
 Plot of histogram with kernel density estimator (eg. numerical by group)
 
+```r
+ggplot(dataset) +
+  geom_histogram() +
+  geom_density() +
+  customization
+```
+
 ![histdensities](/assets/histdensities.png)
+
+Ridge plots (eg. numerical by group)
+
+```r
+ggplot(iris, aes(x = value, y = group, fill = group)) +
+  geom_density_ridges()
+```
+
+![ridgeplot](/assets/ridgeplot.png)
 
 3. Statistics
 
+Plot multiple theoretical distributions on the same plot (eg. three Normal densities)
+
+```r
+ggplot(data=dataset) +
+  stat_function(fun=dnorm, args=list(mean = 0, sd = 1)) +
+  customization
+```
+
+![multipletheoreticaldensities](/assets/multipletheoreticaldensities.png)
+
+
 Convergence of MC estimators (eg. numerical x integer sequence)
+
+```r
+ggplot(dataset, aes( x = seq)) +
+  geom_line( aes(y = cumsum(x1)/(1:length(x1)))) +
+  customization
+```
 
 ![convergence](/assets/convergence.png)
 
-![histdensities](/assets/histdensities.png)
 
- histdensities.png
-Add files via upload
-March 24, 2023 17:17
-histdensity.png
-Add files via upload
-March 24, 2023 17:17
-likertplot.png
-Add files via upload
-March 24, 2023 17:17
-likertplots.png
-Add files via upload
-March 24, 2023 17:17
-mosaicplot.png
-Add files via upload
-March 24, 2023 17:17
-mtdcolors.png
-Add files via upload
-March 24, 2023 17:17
-multipletheoreticaldensities.png
-Add files via upload
-March 24, 2023 17:17
-oddsratios.png
-Add files via upload
-March 24, 2023 17:17
-overlayinghistograms.png
-Add files via upload
-March 24, 2023 17:17
-paracoord.png
-Add files via upload
-March 24, 2023 17:17
-pareto.png
-Add files via upload
-March 24, 2023 17:17
-ridgeplot.png
-Add files via upload
-March 24, 2023 17:17
-scatterplotdiamonds1000.png
-Add files via upload
-March 24, 2023 17:17
-scatterplotdifreglines.png
-Add files via upload
-March 24, 2023 17:17
-scatterplotwithdensities.png 
+
 
 And much more.
