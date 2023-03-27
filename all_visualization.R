@@ -1106,6 +1106,58 @@ p1<-  ggplot(Portfolios, aes(x = Risk, y = Return, color = Risk)) +
 # end
 #----
 
+#------------------------
+# Plot a confusion matrix
+#------------------------
+
+library(klaR) 
+
+# 0. splitting the dataset into training and test sets
+set.seed(2023)
+ind <- sample(2, nrow(iris),replace=TRUE,prob=c(0.7,0.3))
+training <- iris[ind==1,]
+testing <- iris[ind==2,]
+
+# 1. Build a Naive Bayes Classifier
+set.seed(2023)
+nb_model <- NaiveBayes(Species ~ ., data=training) # train Naïve Bayes model
+pred_nb <- predict(nb_model, testing) # apply Naïve Bayes model on test set
+
+# 2. Create a coonfusion Matrix
+tab <- table(pred_nb$class, testing$Species)
+result_nb <- caret::confusionMatrix(tab)
+result_nb
+
+sensitivity_nb <- round(result_nb$byClass[, 1], 4)
+specificity_nb <- round(result_nb$byClass[, 2], 4)
+accuracy_nb <- round(result_nb$overall[1], 4)
+
+# 3. Plot the Confusion Matrix
+
+library(ggplot2)
+
+testing$pred_nb <- pred_nb$class
+ggplot(testing, aes(Species, pred_nb, color = Species)) +
+  geom_jitter(width = 0.2, height = 0.1, size=2) +
+  annotate('text', label = paste("Specificity (Setosa) =", specificity_nb[1], ", Sensitivity (Setosa) =", sensitivity_nb[1]
+  ), x = 2, y = 0.75, size = 3) + 
+  annotate('text', label = paste("Specificity (Versicolor) =", specificity_nb[2], ", Sensitivity (Versicolor) =", sensitivity_nb[2]
+  ), x = 2, y = 0.65, size = 3) +
+  annotate('text', label = paste("Specificity (Virginica) =", specificity_nb[3], ", Sensitivity (Virginica) =", sensitivity_nb[3]
+  ), x = 2, y = 0.55, size = 3) +
+  labs(title = 'Confusion Matrix - Naive Bayes Classifier',
+       subtitle = paste('Predicted vs. Observed from Iris dataset. Accuracy: ', accuracy_nb),
+       y="Predicted", x="Observed") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+#----
+# end
+#----
+
 #------------------------------------------
 # Plotting multiple densities on same graph
 #------------------------------------------
