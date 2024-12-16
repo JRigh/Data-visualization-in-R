@@ -12,6 +12,7 @@ library(ggridges)
 library(fmsb)
 library(sjPlot)
 library(ggfx)                # for shaded areas
+library(ggstream)            # for stream plots
 
 data(iris)
 data(diamonds)
@@ -860,6 +861,33 @@ ggplot(df, aes(x = cut, y = prop, width = cut.count, fill = clarity)) +
   labs(title = 'Mosaic plot of frequency for two nomial or categorical variables',
        subtitle = 'Diamonds dataset',
        y="features", x="correlation") +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8),
+        plot.subtitle=element_text(size=10, face="italic", color="darkred"),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        panel.grid.major = element_line(colour = "grey90"))
+
+
+#----
+# end
+#----
+
+
+#-------------
+# Stream plots
+#-------------
+
+colors = c("#FFB400", "#FFC740", "#C20008", "#FF020D", "#13AFEF")
+
+head(blockbusters)
+ggplot(blockbusters, 
+       aes(year, box_office, fill = genre)) +
+  geom_stream() +
+  scale_fill_manual(values = colors) +
+  geom_stream_label(aes(label = genre)) + 
+  labs(title = 'Stream: volume or quantity over time',
+                                            subtitle = 'blockbusters dataset',
+                                            y="Box office", x="year") +
   theme(axis.text=element_text(size=8),
         axis.title=element_text(size=8),
         plot.subtitle=element_text(size=10, face="italic", color="darkred"),
